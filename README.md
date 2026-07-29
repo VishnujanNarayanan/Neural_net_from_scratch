@@ -118,8 +118,6 @@ Neural_net_from_scratch/
 │   ├── 01_loss_curve.png
 │   ├── 02_roc_curve.png
 │   └── 03_confusion_matrix.png
-├── Image_classifier.ipynb         # Side experiment: multi-task age/gender net (needs UTKFace, not included)
-├── image_classifier2.ipynb        # Refactor of the above; not part of the pipeline described here
 ├── requirements.txt
 ├── LICENSE
 └── README.md
