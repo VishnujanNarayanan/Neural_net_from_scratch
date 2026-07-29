@@ -1,3 +1,8 @@
-numpy
-matplotlib
-scikit-learn
+numpy>=1.26
+scikit-learn>=1.4
+matplotlib>=3.8
+
+# Needed to execute the notebook and regenerate figures/ from the command line
+jupyterlab>=4.0
+nbconvert>=7.0
+ipykernel>=6.0
