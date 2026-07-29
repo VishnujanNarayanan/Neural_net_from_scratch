@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="figures/02_roc_curve.png" width="88%" alt="ROC curve — AUC 0.995 on 114 held-out cases">
-</p>
-
 <h1 align="center">Neural Network From Scratch — Breast Cancer Diagnosis</h1>
 
 <p align="center">
@@ -41,6 +37,11 @@ vectorised backward pass.
   <img src="figures/01_loss_curve.png" width="88%" alt="Training and validation loss over 300 epochs">
 </p>
 <p align="center"><i>Both curves fall together for all 300 epochs — validation ends just 0.024 above training, so the network is not overfitting.</i></p>
+
+<p align="center">
+  <img src="figures/02_roc_curve.png" width="88%" alt="ROC curve — AUC 0.995 on 114 held-out cases">
+</p>
+<p align="center"><i>ROC-AUC of 0.995 on 114 held-out cases — the 0.50 threshold sits in an almost empty region of the score distribution.</i></p>
 
 <p align="center">
   <img src="figures/03_confusion_matrix.png" width="88%" alt="Confusion matrix on the 114-case validation set">
