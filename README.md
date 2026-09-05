@@ -44,16 +44,17 @@ vectorised backward pass.
 | Metric | Value |
 | --- | --- |
 | Validation accuracy | **97.37%** (111 / 114) |
-| ROC-AUC | **0.9954** |
+| ROC-AUC | **0.9950** |
 | Malignant recall | 97.6% (41 / 42) |
 | Benign recall | 97.2% (70 / 72) |
 | Trainable parameters | 641 |
-| Training time | ~3 s on CPU |
+| Gradient check | matches PyTorch autograd to 1e-9 |
+| Training time | ~1 s on CPU (100 epochs) |
 
 <p align="center">
-  <img src="figures/01_loss_curve.png" width="88%" alt="Training and validation loss over 300 epochs">
+  <img src="figures/01_loss_curve.png" width="88%" alt="Training and validation loss over 100 epochs">
 </p>
-<p align="center"><i>Both curves fall together for all 300 epochs — validation ends just 0.024 above training, so the network is not overfitting.</i></p>
+<p align="center"><i>Validation loss reaches its minimum at epoch 100 and ends 0.040 above training — the point where more training stops paying.</i></p>
 
 <p align="center">
   <img src="figures/02_roc_curve.png" width="88%" alt="ROC curve — AUC 0.995 on 114 held-out cases">
@@ -92,9 +93,11 @@ No download required — the dataset ships inside scikit-learn and is loaded wit
 3. **Build the network.** Layers `[30, 16, 8, 1]`. Weights use He initialisation
    (`randn * sqrt(2/fan_in)`), correct for ReLU. Hidden layers are ReLU, the output is a
    sigmoid producing P(benign).
-4. **Train.** 300 epochs of mini-batch gradient descent, batch 32, learning rate 0.01, L2
+4. **Train.** 100 epochs of mini-batch gradient descent, batch 32, learning rate 0.01, L2
    weight decay 1e-4, reshuffled every epoch. Backprop is derived by hand and fully
-   vectorised — the sigmoid-with-BCE output layer collapses to `dZ = A - y`.
+   vectorised — the sigmoid-with-BCE output layer collapses to `dZ = A - y`, which
+   `tests/test_gradients.py` verifies against PyTorch autograd. Validation loss bottoms
+   out at epoch 100, so training stops there.
 5. **Evaluate.** Accuracy, ROC-AUC and a confusion matrix on the held-out split, plus a
    threshold sweep to test whether the one missed malignancy is recoverable.
 
@@ -116,7 +119,17 @@ Run the analysis end to end and regenerate every figure in `figures/`:
 jupyter nbconvert --to notebook --execute --inplace NeuralNet_BreastCancer.ipynb
 ```
 
-Or open it interactively:
+Verify the hand-derived gradients against PyTorch autograd:
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/ -v
+```
+
+PyTorch is a **test-only** dependency — it is used purely as an oracle and never trains
+the model. The shipped network is pure NumPy.
+
+Or open the notebook interactively:
 
 ```bash
 jupyter lab NeuralNet_BreastCancer.ipynb
@@ -148,6 +161,9 @@ Neural_net_from_scratch/
 │   ├── app.py
 │   ├── requirements.txt
 │   └── README.md
+├── tests/
+│   └── test_gradients.py          # Hand-derived gradients vs PyTorch autograd
+├── requirements-dev.txt           # Test-only deps (pytest, torch as a gradient oracle)
 ├── scripts/
 │   ├── check_model.py             # CI guard: re-scores the validation split, fails under 95%
 │   └── export_web.py              # Regenerates docs/*.json from model/weights.npz
@@ -168,7 +184,8 @@ multiplies the notebook does.
 **Drag the decision line.** The network outputs a score, not a verdict, and turning one
 into the other means choosing a cut-off. Every held-out case is a dot; move the line and
 watch missed cancers trade against false alarms. At 0.50 the model misses one cancer and
-raises two false alarms; push to 0.80 and it catches every cancer at the cost of thirteen.
+raises two false alarms; at 0.40 it does better on both; push to 0.90 and it finally catches
+every cancer, at the cost of fourteen false alarms and eight points of accuracy.
 That tradeoff is the whole point — the cut-off is a clinical decision, not a modelling one.
 
 You can also inspect any of the 569 individual cases and see the measurements the network
@@ -220,24 +237,42 @@ sqlite3 db/results.db < db/queries.sql
 
 ## Findings
 
+- **The hand-derived gradient was wrong, and a test caught it.** The output layer applied
+  the sigmoid derivative on top of `dA = A - y` — the gradient for mean squared error, not
+  for binary cross-entropy, which cancels to `dZ = A - y` exactly. The spurious `a(1-a)`
+  factor averages about 0.23, so the output layer trained at roughly a quarter of its
+  intended learning rate. Nothing about the output looked wrong: the loss fell, the
+  accuracy was 97%, and the bug survived every visual check. `tests/test_gradients.py`
+  found it in a second by comparing against autograd, and the earlier
+  *"more epochs would still help"* reading of the loss curve turned out to be the symptom.
+
+- **Correct gradients reach the same accuracy in a third of the time.** 97.37% and 0.9950
+  ROC-AUC at 100 epochs, against 97.37% and 0.9954 at 300 with the damped gradient. What
+  changes is confidence, not ranking: median P(benign) moved from 0.012 to 0.0006 for
+  malignant cases and from 0.953 to 0.9925 for benign ones. The probabilities are far
+  better calibrated even though the accuracy is identical.
+
 - **A 641-parameter network is enough.** Hand-written backprop reaches 97.37% accuracy and
-  0.9954 ROC-AUC on 114 held-out cases — within noise of scikit-learn's tuned estimators on
+  0.9950 ROC-AUC on 114 held-out cases — within noise of scikit-learn's tuned estimators on
   this dataset. The problem is close to linearly separable once features are standardised.
-- **The model is underfitted, not overfitted.** After 300 epochs validation loss is still
-  falling and sits only 0.024 above training loss. The usual portfolio failure mode —
-  memorising 455 rows with a curve that turns upward — never appears; more epochs or more
-  capacity would likely still help.
-- **The one missed malignancy is not a borderline call.** It scores P(benign) = 0.732, above
-  the 10th percentile of genuinely benign cases (0.730). Raising the threshold to 0.60 or
-  0.70 does not recover it; only 0.80 does, and that turns 2 false alarms into 13 while
-  dropping accuracy to 88.6%. This case is confidently wrong, so threshold tuning is the
-  wrong lever — it needs better features or more data.
-- **Separation is near-total elsewhere.** Median P(benign) is 0.012 for malignant cases and
-  0.953 for benign ones. The 0.50 threshold sits in an almost empty region, which is why
-  accuracy is stable across 0.30–0.60.
-- **Standardisation is doing real work.** With `mean area` (143–2501) and `mean smoothness`
-  (0.053–0.163) on the same input layer, unscaled gradients are dominated by the
-  large-magnitude columns and training stalls.
+
+- **The one missed malignancy is confidently wrong, not borderline.** Case 73 scores
+  P(benign) = 0.879, above the 10th percentile of genuinely benign cases (0.745). No
+  threshold below 0.90 recovers it, and 0.90 turns 2 false alarms into 14 while dropping
+  accuracy to 87.7%. Threshold tuning is the wrong lever here — this case needs better
+  features or more data.
+
+- **0.50 is not the best cut-off.** At 0.40 the network scores 98.25% — one missed cancer
+  and one false alarm — against 97.37% at 0.50. The [live demo](#try-it) lets you drag the
+  line and watch the two errors trade.
+
+- **Separation is near-total elsewhere.** Median P(benign) is 0.0006 for malignant cases and
+  0.9925 for benign ones, so accuracy is stable across a wide band of thresholds.
+
+- **Standardisation is doing real work.** The widest raw feature range is 140,789 times the
+  narrowest — `worst area` spans 185–4254 while `fractal dimension error` spans 0.0009–0.0298.
+  On the same input layer, unscaled gradients are dominated by the large-magnitude columns
+  and training stalls. That ratio is computed in the notebook, not quoted.
 
 ## Author
 

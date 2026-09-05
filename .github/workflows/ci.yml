@@ -60,3 +60,23 @@ jobs:
             echo "docs/*.json is stale. Run scripts/export_web.py and commit the result."
             exit 1
           }
+
+  gradients:
+    name: Hand-derived gradients vs PyTorch autograd
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Verify every gradient against autograd
+        run: pytest tests/ -v

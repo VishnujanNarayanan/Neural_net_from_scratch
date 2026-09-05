@@ -1,0 +1,6 @@
+# Test-only dependencies. PyTorch is used purely as a gradient oracle in
+# tests/test_gradients.py — it never trains the model and is not needed to run
+# the notebook, the demo or anything the project ships.
+-r requirements.txt
+pytest>=8.0
+torch>=2.0
