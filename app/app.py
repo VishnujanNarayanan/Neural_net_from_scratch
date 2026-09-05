@@ -51,14 +51,12 @@ def diagnose(raw_csv):
         return "Every measurement must be a number.", None
 
     p_benign = forward(x)
-    label = "Benign" if p_benign >= 0.5 else "Malignant"
+    label = "benign" if p_benign >= 0.5 else "malignant"
     verdict = (
-        f"### {label}\n\n"
-        f"The network scores this sample **{p_benign:.3f}** on a 0-1 scale where 1 is "
-        f"benign and 0 is malignant. It was trained on 455 cases and has never seen "
-        f"this one.\n\n"
-        f"_A screening aid built as a learning project — not a medical device, and "
-        f"not a substitute for a pathologist._"
+        f"**Model output:** `{p_benign:.4f}` on a 0-1 scale where 1 is benign and "
+        f"0 is malignant, so at the 0.50 threshold it reads this sample as "
+        f"**{label}**.\n\n"
+        f"Trained on 455 cases; this one was held out."
     )
     return verdict, {"Benign": p_benign, "Malignant": 1 - p_benign}
 
@@ -67,35 +65,41 @@ def example_case(index):
     """Pull a real case out of the dataset so a visitor can try it in one click."""
     i = int(index) % len(DATA.data)
     actual = "benign" if DATA.target[i] == 1 else "malignant"
-    return ", ".join(f"{v:g}" for v in DATA.data[i]), f"Case {i} — actual diagnosis: **{actual}**"
+    return ", ".join(f"{v:g}" for v in DATA.data[i]), f"### Case {i} — recorded diagnosis: {actual}"
 
 
-with gr.Blocks(title="Breast tumour diagnosis — neural network from scratch") as demo:
+with gr.Blocks(title="Neural network from scratch — breast cancer classifier") as demo:
     gr.Markdown(
-        "# Breast tumour diagnosis\n"
-        "A 3-layer neural network written by hand in NumPy — no PyTorch, no TensorFlow, "
-        "no autograd. It reads 30 measurements taken from a cell-nucleus image and says "
-        "whether the growth looks malignant or benign.\n\n"
-        "Load an example case below, or paste your own 30 comma-separated measurements."
+        "# Neural network from scratch\n"
+        "### A 3-layer classifier written by hand in NumPy — no PyTorch, no TensorFlow, "
+        "no autograd\n\n"
+        "> **This is a learning project, not a medical device.** It is trained on 455 "
+        "cases from a single 1990s research dataset, has no clinical validation of any "
+        "kind, and must not be used to make any decision about anyone's health.\n\n"
+        "Pick any of the 569 research cases below and compare what the network scores it "
+        "against the diagnosis recorded in the dataset. The interesting ones are the "
+        "three it gets wrong: **73**, **541** and **542**."
     )
 
     with gr.Row():
-        index = gr.Number(value=0, precision=0, label="Example case number (0-568)")
-        load = gr.Button("Load example case")
+        index = gr.Slider(0, len(DATA.data) - 1, value=73, step=1,
+                          label="Research case number")
+        run = gr.Button("Run the model", variant="primary")
+
     actual = gr.Markdown()
-
-    raw = gr.Textbox(
-        label="30 measurements, comma separated",
-        lines=4,
-        value=", ".join(f"{v:g}" for v in DATA.data[0]),
-    )
-    run = gr.Button("Diagnose", variant="primary")
-
     verdict = gr.Markdown()
-    scores = gr.Label(label="Model confidence", num_top_classes=2)
+    scores = gr.Label(label="Model score", num_top_classes=2)
 
-    load.click(example_case, inputs=index, outputs=[raw, actual])
-    run.click(diagnose, inputs=raw, outputs=[verdict, scores])
+    with gr.Accordion("The 30 measurements for this case", open=False):
+        raw = gr.Textbox(label="", lines=4, interactive=False)
+
+    def show(i):
+        measurements, actual_md = example_case(i)
+        v, sc = diagnose(measurements)
+        return measurements, actual_md, v, sc
+
+    run.click(show, inputs=index, outputs=[raw, actual, verdict, scores])
+    demo.load(show, inputs=index, outputs=[raw, actual, verdict, scores])
 
     gr.Markdown(
         "The 30 features are: " + ", ".join(FEATURES) + ".\n\n"

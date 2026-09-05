@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neural Network From Scratch — Breast Cancer Classifier</title>
+<meta name="description" content="A 3-layer neural network written by hand in NumPy, running entirely in your browser. No server, no autograd.">
+<style>
+  :root{
+    --surface:#fcfcfb; --page:#f9f9f7; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+    --grid:#e1e0d9; --axis:#c3c2b7; --blue:#2a78d6; --orange:#eb6834; --red:#e34948;
+    --green:#008300;
+    --mono:"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:"Liberation Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:var(--sans);
+       line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  h1{font-size:1.75rem;line-height:1.2;margin:0 0 .3rem}
+  .sub{color:var(--ink2);font-size:1.02rem;margin:0 0 1.4rem}
+  .warn{border-left:3px solid var(--orange);background:var(--surface);
+        padding:14px 16px;margin:0 0 1.8rem;font-size:.93rem;color:var(--ink2)}
+  .warn b{color:var(--ink)}
+  .card{background:var(--surface);border:1px solid var(--grid);border-radius:6px;
+        padding:22px;margin-bottom:18px}
+  label{display:block;font-size:.85rem;color:var(--ink2);margin-bottom:10px}
+  input[type=range]{width:100%;accent-color:var(--blue)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+  button{font:inherit;font-size:.86rem;padding:7px 13px;border:1px solid var(--axis);
+         background:var(--surface);color:var(--ink);border-radius:5px;cursor:pointer}
+  button:hover{border-color:var(--blue);color:var(--blue)}
+  button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .caseno{font-family:var(--mono);font-size:.95rem;color:var(--ink2)}
+  .verdictrow{display:flex;gap:26px;flex-wrap:wrap;margin:4px 0 18px}
+  .stat{flex:1 1 190px}
+  .stat .k{font-size:.76rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .stat .v{font-size:1.5rem;font-weight:600;font-family:var(--mono);margin-top:2px}
+  .bar{height:26px;border-radius:4px;overflow:hidden;display:flex;
+       border:1px solid var(--grid);margin-top:6px}
+  .bar i{display:block;height:100%;transition:width .18s ease}
+  .bar .ben{background:var(--blue)} .bar .mal{background:var(--orange)}
+  .scale{display:flex;justify-content:space-between;font-size:.74rem;
+         color:var(--muted);font-family:var(--mono);margin-top:5px}
+  .flag{display:inline-block;font-size:.78rem;padding:3px 9px;border-radius:99px;
+        font-weight:600;letter-spacing:.02em}
+  .ok{background:#e7f3e7;color:var(--green)} .no{background:#fdeaea;color:var(--red)}
+  table{border-collapse:collapse;width:100%;font-size:.83rem;font-family:var(--mono)}
+  td{padding:4px 8px;border-bottom:1px solid var(--grid)}
+  td:last-child{text-align:right;color:var(--ink2)}
+  details{margin-top:16px} summary{cursor:pointer;font-size:.86rem;color:var(--ink2)}
+  footer{margin-top:34px;font-size:.85rem;color:var(--muted)}
+  a{color:var(--blue)}
+  @media(max-width:520px){.stat .v{font-size:1.25rem}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Neural network from scratch</h1>
+  <p class="sub">A 3-layer classifier written by hand in NumPy — forward pass, backpropagation
+  and mini-batch gradient descent all derived manually. No PyTorch, no TensorFlow, no autograd.
+  <b>All 641 parameters are running in this page</b>, in JavaScript, with no server behind it.</p>
+
+  <div class="warn">
+    <b>This is a learning project, not a medical device.</b> It is trained on 455 cases from a
+    single 1990s research dataset, has no clinical validation of any kind, and must not be used
+    to make any decision about anyone's health.
+  </div>
+
+  <div class="card">
+    <label for="idx">Research case <span class="caseno" id="caseno">73</span> of 569</label>
+    <input type="range" id="idx" min="0" max="568" value="73" step="1">
+    <div class="row">
+      <span class="caseno">Jump to a case it gets wrong:</span>
+      <button data-jump="73">73</button>
+      <button data-jump="541">541</button>
+      <button data-jump="542">542</button>
+      <button data-jump="0">a confident one</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="verdictrow">
+      <div class="stat">
+        <div class="k">Recorded diagnosis</div>
+        <div class="v" id="actual">—</div>
+      </div>
+      <div class="stat">
+        <div class="k">Network reads it as</div>
+        <div class="v" id="pred">—</div>
+      </div>
+      <div class="stat">
+        <div class="k">Score</div>
+        <div class="v" id="score">—</div>
+      </div>
+    </div>
+    <div id="flag"></div>
+    <div class="bar"><i class="mal" id="barmal"></i><i class="ben" id="barben"></i></div>
+    <div class="scale"><span>0.0 malignant</span><span>0.50 threshold</span><span>benign 1.0</span></div>
+
+    <details>
+      <summary>The 30 measurements for this case</summary>
+      <table id="feats"></table>
+    </details>
+  </div>
+
+  <footer>
+    Data: <a href="https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic">Breast
+    Cancer Wisconsin (Diagnostic)</a>, UCI dataset 17 · Code and write-up:
+    <a href="https://github.com/VishnujanNarayanan/Neural_net_from_scratch">GitHub</a>
+  </footer>
+
+</div>
+
+<script>
+// The same forward pass as NeuralNN._forward in the notebook: standardise with the
+// training-split scaler, ReLU through the hidden layers, sigmoid at the output.
+let M = null, C = null;
+
+function forward(x){
+  let a = x.map((v,i) => (v - M.scaler_mean[i]) / M.scaler_scale[i]);
+  for (let l = 0; l < M.W.length; l++){
+    const W = M.W[l], b = M.b[l], out = new Array(b.length).fill(0);
+    for (let j = 0; j < b.length; j++){
+      let z = b[j];
+      for (let i = 0; i < a.length; i++) z += a[i] * W[i][j];
+      out[j] = (l === M.W.length - 1) ? 1 / (1 + Math.exp(-z)) : Math.max(0, z);
+    }
+    a = out;
+  }
+  return a[0];
+}
+
+const $ = id => document.getElementById(id);
+
+function render(i){
+  const x = C.X[i], pBenign = forward(x);
+  const actual = C.y[i] === 1 ? "Benign" : "Malignant";
+  const pred   = pBenign >= 0.5 ? "Benign" : "Malignant";
+
+  $("caseno").textContent = i;
+  $("actual").textContent = actual;
+  $("pred").textContent   = pred;
+  $("score").textContent  = pBenign.toFixed(4);
+  $("barben").style.width = (pBenign * 100) + "%";
+  $("barmal").style.width = ((1 - pBenign) * 100) + "%";
+  $("flag").innerHTML = actual === pred
+    ? '<span class="flag ok">correct</span>'
+    : '<span class="flag no">wrong — the network disagrees with the recorded diagnosis</span>';
+
+  $("feats").innerHTML = C.feature_names
+    .map((n, k) => `<tr><td>${n}</td><td>${x[k]}</td></tr>`).join("");
+}
+
+Promise.all([
+  fetch("model.json").then(r => r.json()),
+  fetch("cases.json").then(r => r.json())
+]).then(([m, c]) => {
+  M = m; C = c;
+  $("idx").addEventListener("input", e => render(+e.target.value));
+  document.querySelectorAll("[data-jump]").forEach(b =>
+    b.addEventListener("click", () => {
+      $("idx").value = b.dataset.jump;
+      render(+b.dataset.jump);
+    }));
+  render(73);
+});
+</script>
+</body>
+</html>

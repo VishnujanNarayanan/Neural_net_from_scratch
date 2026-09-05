@@ -44,3 +44,11 @@ jobs:
 
       - name: Check the model still clears its accuracy floor
         run: python scripts/check_model.py
+
+      - name: Check the browser demo has not drifted from the notebook's weights
+        run: |
+          python scripts/export_web.py
+          git diff --exit-code -- docs/ || {
+            echo "docs/*.json is stale. Run scripts/export_web.py and commit the result."
+            exit 1
+          }
