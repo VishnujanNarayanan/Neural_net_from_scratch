@@ -47,6 +47,14 @@ jobs:
 
       - name: Check the browser demo has not drifted from the notebook's weights
         run: |
+          # Executing the notebook above retrains the network and rewrites
+          # model/weights.npz. Even with a fixed seed those weights are not bit-identical
+          # across BLAS builds and thread counts, so regenerating docs/ from them compares
+          # float noise and fails at random. The invariant worth testing is that docs/
+          # matches the weights that are actually COMMITTED, so restore those first.
+          # Behavioural drift in the retrained model is already caught by the accuracy
+          # floor in the previous step.
+          git checkout -- model/weights.npz
           python scripts/export_web.py
           git diff --exit-code -- docs/ || {
             echo "docs/*.json is stale. Run scripts/export_web.py and commit the result."

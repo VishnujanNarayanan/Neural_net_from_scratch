@@ -10,6 +10,7 @@ import pathlib
 
 import numpy as np
 from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 art = np.load(ROOT / "model" / "weights.npz", allow_pickle=False)
@@ -23,11 +24,20 @@ model = {
 }
 
 data = load_breast_cancer()
+
+# Which split each case landed in, recovered with the notebook's exact parameters.
+# The page reports metrics on the validation split only — quoting accuracy over cases
+# the network trained on would flatter it.
+idx_train, idx_val = train_test_split(
+    np.arange(len(data.data)), test_size=0.20, random_state=42, stratify=data.target)
+val = set(int(i) for i in idx_val)
+
 cases = {
     "feature_names": list(data.feature_names),
     # rounded to 6 significant figures: identical predictions, much smaller payload
     "X": [[float(f"{v:.6g}") for v in row] for row in data.data],
     "y": [int(t) for t in data.target],  # 1 = benign, 0 = malignant
+    "val": [int(i in val) for i in range(len(data.data))],
 }
 
 out = ROOT / "docs"

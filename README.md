@@ -162,10 +162,17 @@ Neural_net_from_scratch/
 **[Run it in your browser →](https://vishnujannarayanan.github.io/Neural_net_from_scratch/)** — no install, no sign-up, and **no cold start**.
 
 All 641 parameters run client-side in JavaScript, so there is no server to wake: the page
-loads `model.json` and `cases.json` (137 KB together) and does the same three matrix
-multiplies the notebook does. Pick any of the 569 research cases and compare the network's
-score against the recorded diagnosis. The interesting ones are the three it gets wrong —
-cases **73**, **541** and **542**.
+loads `model.json` and `cases.json` (138 KB together) and does the same three matrix
+multiplies the notebook does.
+
+**Drag the decision line.** The network outputs a score, not a verdict, and turning one
+into the other means choosing a cut-off. Every held-out case is a dot; move the line and
+watch missed cancers trade against false alarms. At 0.50 the model misses one cancer and
+raises two false alarms; push to 0.80 and it catches every cancer at the cost of thirteen.
+That tradeoff is the whole point — the cut-off is a clinical decision, not a modelling one.
+
+You can also inspect any of the 569 individual cases and see the measurements the network
+scored.
 
 Also mirrored as a Hugging Face Space: **[Vishnujann/nn-from-scratch-breast-cancer](https://huggingface.co/spaces/Vishnujann/nn-from-scratch-breast-cancer)**.
 
