@@ -13,7 +13,9 @@
   <img alt="Matplotlib" src="https://img.shields.io/badge/Matplotlib-3.10-11557c?logo=plotly&logoColor=white"/>
   <img alt="Jupyter" src="https://img.shields.io/badge/Jupyter-notebook-F37626?logo=jupyter&logoColor=white"/>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-750014"/></a>
+  <a href="https://github.com/VishnujanNarayanan/Neural_net_from_scratch/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/VishnujanNarayanan/Neural_net_from_scratch/actions/workflows/ci.yml/badge.svg"/></a>
   <br>
+  <a href="https://vishnujan-narayanan.vercel.app/"><img alt="Portfolio" src="https://img.shields.io/badge/Portfolio-vishnujan--narayanan.vercel.app-3b5998?logo=googlechrome&logoColor=white&style=for-the-badge"/></a>
   <a href="https://github.com/VishnujanNarayanan"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-VishnujanNarayanan-181717?logo=github&logoColor=white&style=for-the-badge"/></a>
   <a href="https://www.linkedin.com/in/vishnujan-narayanan"><img alt="LinkedIn" src="https://img.shields.io/badge/LinkedIn-Vishnujan_Narayanan-0A66C2?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0yMC40NDcgMjAuNDUyaC0zLjU1NHYtNS41NjljMC0xLjMyOC0uMDI3LTMuMDM3LTEuODUyLTMuMDM3LTEuODUzIDAtMi4xMzYgMS40NDUtMi4xMzYgMi45Mzl2NS42NjdIOS4zNTFWOWgzLjQxNHYxLjU2MWguMDQ2Yy40NzctLjkgMS42MzctMS44NSAzLjM3LTEuODUgMy42MDEgMCA0LjI2NyAyLjM3IDQuMjY3IDUuNDU1djYuMjg2ek01LjMzNyA3LjQzM2MtMS4xNDQgMC0yLjA2My0uOTI2LTIuMDYzLTIuMDY1IDAtMS4xMzguOTItMi4wNjMgMi4wNjMtMi4wNjMgMS4xNCAwIDIuMDY0LjkyNSAyLjA2NCAyLjA2MyAwIDEuMTM5LS45MjUgMi4wNjUtMi4wNjQgMi4wNjV6bTEuNzgyIDEzLjAxOUgzLjU1NVY5aDMuNTY0djExLjQ1MnpNMjIuMjI1IDBIMS43NzFDLjc5MiAwIDAgLjc3NCAwIDEuNzI5djIwLjU0MkMwIDIzLjIyNy43OTIgMjQgMS43NzEgMjRoMjAuNDUxQzIzLjIgMjQgMjQgMjMuMjI3IDI0IDIyLjI3MVYxLjcyOUMyNCAuNzc0IDIzLjIgMCAyMi4yMjIgMGguMDAzeiIvPjwvc3ZnPg%3D%3D&logoColor=white&style=for-the-badge"/></a>
   <a href="https://substack.com/@vishnujannarayanan"><img alt="Substack" src="https://img.shields.io/badge/Substack-@vishnujannarayanan-FF6719?logo=substack&logoColor=white&style=for-the-badge"/></a>
@@ -25,6 +27,8 @@
   🧩 <a href="#approach">Approach</a> ·
   ⚡ <a href="#installation-and-usage">Installation</a> ·
   📁 <a href="#project-structure">Structure</a> ·
+  🔬 <a href="#try-it">Try it</a> ·
+  🗄️ <a href="#querying-the-results">Queries</a> ·
   🔍 <a href="#findings">Findings</a>
 </p>
 
@@ -130,9 +134,69 @@ Neural_net_from_scratch/
 │   ├── 01_loss_curve.png
 │   ├── 02_roc_curve.png
 │   └── 03_confusion_matrix.png
+├── db/
+│   ├── queries.sql                # Named queries behind every claim in Findings
+│   └── results.db                 # SQLite, rebuilt on each run (gitignored)
+├── model/
+│   └── weights.npz                # Exported weights, biases and scaler stats — 641 parameters
+├── app/                           # Gradio inference demo, deployable to Hugging Face Spaces
+│   ├── app.py
+│   ├── requirements.txt
+│   └── README.md
+├── scripts/
+│   └── check_model.py             # CI guard: re-scores the validation split, fails under 95%
+├── .github/workflows/ci.yml       # Executes the notebook on every push
 ├── requirements.txt
 ├── LICENSE
 └── README.md
+```
+
+## Try it
+
+`app/` is an inference-only [Gradio](https://gradio.app) demo. It loads
+`model/weights.npz` and reruns the same forward pass as `NeuralNN._forward`, so it needs
+no training step and starts in about a second. Load any of the 569 real cases by index
+and compare the model's score against the actual diagnosis, or paste your own 30
+measurements.
+
+```bash
+pip install -r app/requirements.txt
+python app/app.py                 # http://127.0.0.1:7860
+```
+
+To deploy it as a Hugging Face Space, create a Gradio Space and push `app/` as its root
+with `model/` copied inside — `app.py` looks for the weights in both locations:
+
+```bash
+cp -r model app/model
+huggingface-cli repo create nn-from-scratch-breast-cancer --type space --space_sdk gradio
+git clone https://huggingface.co/spaces/<your-username>/nn-from-scratch-breast-cancer space
+cp -r app/. space/ && cd space && git add -A && git commit -m "Deploy demo" && git push
+```
+
+**This is a learning project, not a medical device.** It is trained on 455 cases from a
+single 1990s study and has no clinical validation of any kind.
+
+## Querying the results
+
+After a run, `db/results.db` holds two tables — `cases` (all 569 cases, their 30
+measurements, true diagnosis and split) and `predictions` (the model's `p_benign` and
+assigned label for each validation case). `db/queries.sql` holds the five named queries
+the notebook executes and prints:
+
+| query | question it answers |
+| --- | --- |
+| `class_balance` | Did the stratified split preserve the 37/63 ratio? |
+| `feature_ranges` | Which measurements span the widest raw range? |
+| `misclassified` | Which validation cases were wrong, and how confidently? |
+| `score_separation` | How far apart are the two classes' scores? |
+| `threshold_sweep` | Can a different decision threshold recover the missed malignancy? |
+
+Every number in [Findings](#findings) comes from these queries rather than from prose, so
+re-running the notebook re-derives them:
+
+```bash
+sqlite3 db/results.db < db/queries.sql
 ```
 
 ## Findings
@@ -163,6 +227,7 @@ Neural_net_from_scratch/
 </p>
 
 <p align="center">
+  <a href="https://vishnujan-narayanan.vercel.app/"><img alt="Portfolio" src="https://img.shields.io/badge/Portfolio-vishnujan--narayanan.vercel.app-3b5998?logo=googlechrome&logoColor=white&style=for-the-badge"/></a>
   <a href="https://github.com/VishnujanNarayanan"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-VishnujanNarayanan-181717?logo=github&logoColor=white&style=for-the-badge"/></a>
   <a href="https://www.linkedin.com/in/vishnujan-narayanan"><img alt="LinkedIn" src="https://img.shields.io/badge/LinkedIn-Vishnujan_Narayanan-0A66C2?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0yMC40NDcgMjAuNDUyaC0zLjU1NHYtNS41NjljMC0xLjMyOC0uMDI3LTMuMDM3LTEuODUyLTMuMDM3LTEuODUzIDAtMi4xMzYgMS40NDUtMi4xMzYgMi45Mzl2NS42NjdIOS4zNTFWOWgzLjQxNHYxLjU2MWguMDQ2Yy40NzctLjkgMS42MzctMS44NSAzLjM3LTEuODUgMy42MDEgMCA0LjI2NyAyLjM3IDQuMjY3IDUuNDU1djYuMjg2ek01LjMzNyA3LjQzM2MtMS4xNDQgMC0yLjA2My0uOTI2LTIuMDYzLTIuMDY1IDAtMS4xMzguOTItMi4wNjMgMi4wNjMtMi4wNjMgMS4xNCAwIDIuMDY0LjkyNSAyLjA2NCAyLjA2MyAwIDEuMTM5LS45MjUgMi4wNjUtMi4wNjQgMi4wNjV6bTEuNzgyIDEzLjAxOUgzLjU1NVY5aDMuNTY0djExLjQ1MnpNMjIuMjI1IDBIMS43NzFDLjc5MiAwIDAgLjc3NCAwIDEuNzI5djIwLjU0MkMwIDIzLjIyNy43OTIgMjQgMS43NzEgMjRoMjAuNDUxQzIzLjIgMjQgMjQgMjMuMjI3IDI0IDIyLjI3MVYxLjcyOUMyNCAuNzc0IDIzLjIgMCAyMi4yMjIgMGguMDAzeiIvPjwvc3ZnPg%3D%3D&logoColor=white&style=for-the-badge"/></a>
   <a href="https://substack.com/@vishnujannarayanan"><img alt="Substack" src="https://img.shields.io/badge/Substack-@vishnujannarayanan-FF6719?logo=substack&logoColor=white&style=for-the-badge"/></a>
