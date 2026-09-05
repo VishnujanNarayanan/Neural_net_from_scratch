@@ -1,10 +1,9 @@
 ---
-title: Breast Tumour Diagnosis — Neural Network From Scratch
+title: Neural Network From Scratch — Breast Cancer Classifier
 emoji: 🔬
 colorFrom: blue
 colorTo: indigo
 sdk: gradio
-sdk_version: "4.44.0"
 app_file: app.py
 pinned: false
 license: mit
@@ -17,4 +16,5 @@ backpropagation and mini-batch gradient descent all derived by hand.
 The weights in `model/weights.npz` are exported by the notebook in that repository.
 This Space only runs the forward pass.
 
-Not a medical device.
+A learning project, not a medical device: trained on 455 cases from a single
+1990s research dataset, with no clinical validation of any kind.
